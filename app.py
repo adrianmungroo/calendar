@@ -1,12 +1,16 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import pytz
 
 events = pd.read_csv('calendar.csv')
 
 def get_current_task(events):
-    current_time = datetime.now().time()
-    current_day = datetime.now().weekday()
+    utc_now = datetime.now(pytz.utc)
+    atlanta_tz = pytz.timezone('America/New_York')
+    atlanta_time = utc_now.astimezone(atlanta_tz)
+    current_time = atlanta_time.time()
+    current_day = atlanta_time.weekday()
     current_hour_fraction = current_time.hour + current_time.minute/60
     
     day_mask = events['day'] == current_day
