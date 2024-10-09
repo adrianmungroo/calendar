@@ -23,13 +23,12 @@ def get_current_task(events = events, current_day = current_day, current_hour_fr
         current_event_title = current_event['title'].values[0]
         current_event_index = current_event.index[0]
 
-        color = 'rainbow'
-
-        event_string = f'#### Right now, you should be doing ... \n # :{color}[{current_event_title}]'
+        event_string = f'#### Right now, you should be doing ... \n # :rainbow[{current_event_title}]'
         return event_string, current_event_index
-    except: #obtained no event, get last one
-        last_event_index = events[day_mask].index[-1]
-        return f'# :{color}[You have nothing to do right now]', last_event_index
+    except: #obtained no event, get last one. NO NEED TO GET THE ONE RIGHT BEFORE THE CURRENT TIME
+        time_mask = (events['start'] <= current_hour_fraction)
+        last_event_index = events[day_mask and time_mask].index[-1]
+        return f'# :rainbow[You have nothing to do right now]', last_event_index
     
 def get_next(index, events = events, current_hour_fraction = current_hour_fraction):
     try:
