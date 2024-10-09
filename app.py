@@ -22,11 +22,10 @@ def get_current_task(events = events, current_day = current_day, current_hour_fr
         current_event = events[day_mask & time_mask]
         current_event_title = current_event['title'].values[0]
         current_event_index = current_event.index[0]
-
-        event_string = f'#### Right now, you should be doing ... \n # :rainbow[{current_event_title}]'
-        return event_string, current_event_index
-    except: #obtained no event, get last one. NO NEED TO GET THE ONE RIGHT BEFORE THE CURRENT TIME
-        time_mask = events['start'] <= current_hour_fraction
+        return current_event_title, current_event_index
+    
+    except: #obtained no event, GET THE ONE RIGHT BEFORE THE CURRENT TIME
+        time_mask = events['end'] <= current_hour_fraction
         last_event_index = events[day_mask & time_mask].index[-1]
         return f'# :rainbow[You have nothing to do right now]', last_event_index
     
@@ -50,5 +49,8 @@ def get_next(index, events = events, current_hour_fraction = current_hour_fracti
 current_event_string, current_event_index = get_current_task()
 next_title, time_left = get_next(current_event_index)
 
-st.write(f"{current_event_string}")
-st.write(f"{next_title} in... \n\n :rainbow[{round(time_left,2)} minutes]")
+st.write(f"You should probably be doing ...")
+st.write(f"# :rainbow[{current_event_string}]")
+st.write(f'and in :red[{round(time_left,2)} minutes] you have ...')
+st.write(f"##### :rainbow[{next_title}]")
+st.button('Refresh')
