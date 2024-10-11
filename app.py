@@ -2,10 +2,14 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import pytz
+import math
 
 df = pd.read_csv('calendar.csv')
 df['duration'] = (df['end'] - df['start'])*60
 df = df.sort_values(['day','start']).reset_index()
+df['true_start'] = df['start'] + df['day']*24
+df['true_end'] = df['end'] + df['day']*24
+
 events = df.copy()
 
 utc_now = datetime.now(pytz.utc)
@@ -13,44 +17,53 @@ atlanta_tz = pytz.timezone('America/New_York')
 atlanta_time = utc_now.astimezone(atlanta_tz)
 current_time = atlanta_time.time()
 current_day = atlanta_time.weekday()
-current_hour_fraction = current_time.hour + current_time.minute/60 + current_time.second/(60*60)
+true_time = current_day*24 + current_time.hour + current_time.minute/60 + current_time.second/(60*60)
 
-def get_current_task(events = events, current_day = current_day, current_hour_fraction = current_hour_fraction):
+def get_current_task(events=events, true_time=true_time):
+    time_mask = (events['true_start'] <= true_time) & (events['true_end'] > true_time)
     try:
-        day_mask = events['day'] == current_day
-        time_mask = (events['start'] <= current_hour_fraction) & (events['end'] > current_hour_fraction)
-        current_event = events[day_mask & time_mask]
-        current_event_title = current_event['title'].values[0]
-        current_event_index = current_event.index[0]
-        return current_event_title, current_event_index
+        current_event = events[time_mask]['title'].values[0]
+    except:
+        current_event = 'Nothing'
+    return current_event
     
-    except: #obtained no event, GET THE ONE RIGHT BEFORE THE CURRENT TIME
-        time_mask = events['end'] <= current_hour_fraction
-        last_event_index = events[day_mask & time_mask].index[-1]
-        return f'# :rainbow[You have nothing to do right now]', last_event_index
-    
-def get_next(index, events = events, current_hour_fraction = current_hour_fraction):
-    try:
-        current_day = events.iloc[index]['day']
-        next_day = events.iloc[index + 1]['day']
-        next = events.iloc[index + 1]
-        next_title = next['title']
-        if next_day == current_day:
-            time_left = (next['start'] - current_hour_fraction)*60
-        else:
-            time_left = (24*(next_day - current_day) + next['start'] - current_hour_fraction)*60
-        return next_title, time_left
-    except: # end of the week rollover
-        next = events.iloc[0]
-        next_title = next['title']
-        time_left = (24*(7 - current_day) + next['start'] - current_hour_fraction)*60
-        return next_title, time_left
+def get_next_task(events = events, true_time = true_time):
+    next_task = events[events['true_start'] > true_time].iloc[0]
+    time_until = next_task['true_start'] - true_time
+    next_task_title = next_task['title']
+    return next_task_title, time_until
 
-current_event_string, current_event_index = get_current_task()
-next_title, time_left = get_next(current_event_index)
+current_task = get_current_task()
+next_task, time_until = get_next_task()
 
-st.write(f"You should probably be doing ...")
-st.write(f"# :rainbow[{current_event_string}]")
-st.write(f'and in :red[{round(time_left,2)} minutes] you have ...')
-st.write(f"##### :rainbow[{next_title}]")
-st.button('Refresh')
+hours_until = math.floor(time_until)
+minutes_until = math.floor((time_until - hours_until)*60)
+seconds_until = math.floor(((time_until - hours_until)*60 - minutes_until)*60)
+
+st.markdown(
+    """
+    <style>
+    .current-task {
+        font-size: 48px;  /* Large font size for current task */
+        color: #ff6347;   /* Tomato color for prominence */
+        font-weight: bold; /* Bold font for emphasis */
+        margin-bottom: 30px; /* Space below current task */
+    }
+    .other-task {
+        font-size: 24px;  /* Smaller font size for other tasks */
+        color: #555;      /* Grey color for less emphasis */
+        margin-bottom: 15px; /* Space below other tasks */
+    }
+    .refresh-button {
+        margin-top: 10px; /* Space above the button */
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Display tasks with styling
+st.markdown(f'<div class="current-task">DO {current_task}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="other-task">FOR {hours_until} hours, {minutes_until} minutes, and {seconds_until} seconds</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="other-task">UNTIL {next_task}</div>', unsafe_allow_html=True)
+st.button("Refresh")
